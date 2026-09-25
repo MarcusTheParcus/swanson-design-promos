@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@500&display=swap');
+:root{--ink:#272727;--muted:#77716b;--paper:#f5f2ed;--gold:#b9a17a;--line:#d9d2c8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Montserrat,Arial,sans-serif}
+.top{padding:46px 6vw 28px;max-width:1500px;margin:auto}
+.brand{display:flex;align-items:center;gap:34px}
+.brand img{width:126px;height:150px;object-fit:contain;object-position:center}
+.brand span{font-size:18px;line-height:1.1;letter-spacing:.20em;color:var(--ink);font-weight:600}
+.rule{height:1px;background:var(--line);margin:28px 0 22px}
+.intro{max-width:850px;font-family:'Playfair Display',Georgia,serif;font-size:22px;line-height:1.45;margin:0}
+.group{max-width:1500px;margin:0 auto 58px;padding:0 6vw}
+.group h2{font-size:15px;letter-spacing:.24em;font-weight:600;color:var(--ink);border-top:1px solid var(--line);padding-top:17px;margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+.card{background:#fff;border:1px solid #e4ded6;box-shadow:0 8px 28px rgba(30,25,20,.05);display:flex;flex-direction:column;min-width:0}
+.card img{display:block;width:100%;height:auto;object-fit:contain;background:#fff}
+.cardbody{padding:20px 20px 22px;display:flex;align-items:flex-end;justify-content:space-between;gap:15px;min-height:112px}
+.title{font-family:'Playfair Display',Georgia,serif;font-size:20px;line-height:1.2}
+.view{flex:0 0 auto;text-decoration:none;border:1px solid var(--ink);color:var(--ink);font-size:10px;letter-spacing:.18em;padding:12px 14px;transition:.2s}
+.view:hover{background:var(--ink);color:#fff}
+.loading{padding:80px 6vw;color:var(--muted)}
+footer{max-width:1500px;margin:70px auto 0;padding:30px 6vw 48px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:.13em;color:var(--ink);font-weight:500}
+footer a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+footer a:hover{color:var(--gold)}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.top{padding-top:30px}.brand{gap:18px}.brand img{width:100px;height:120px}.brand span{font-size:14px}.intro{font-size:18px}.grid{grid-template-columns:1fr}.cardbody{min-height:100px}footer{display:block}footer span,footer a{display:block;margin:9px 0}}
