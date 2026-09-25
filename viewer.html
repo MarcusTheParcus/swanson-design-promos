@@ -57,7 +57,7 @@ const pages = document.getElementById("pages");
 const viewer = document.getElementById("viewer");
 const status = document.getElementById("status");
 const err = document.getElementById("err");
-let pdf=null, scale=1, pageNum=1, pageRendering=false;
+let pdf=null, scale=-1, pageNum=1, pageRendering=false;
 
 title.textContent = p ? p.title : "Project Viewer";
 document.getElementById("back").onclick=()=>location.href="index.html";
@@ -69,7 +69,7 @@ function showError(msg){
 function renderPage(n){
   return pdf.getPage(n).then(page=>{
     const base=page.getViewport({scale:1});
-    const available=Math.max(320, viewer.clientWidth-36);
+    const available=Math.max(320, window.innerWidth - 36);
     const s=scale<0 ? available/base.width : scale;
     const vp=page.getViewport({scale:s});
     const c=document.createElement("canvas");
@@ -110,8 +110,21 @@ document.getElementById("plus").onclick=()=>{scale=scale<0?1.15:Math.min(3,scale
 document.getElementById("minus").onclick=()=>{scale=scale<0?.85:Math.max(.35,scale-.15);renderAll()};
 document.getElementById("prev").onclick=()=>{pageNum=Math.max(1,pageNum-1);document.getElementById("pageInfo").textContent=pageNum+" of "+pdf.numPages;document.querySelectorAll(".page")[pageNum-1]?.scrollIntoView({behavior:"smooth",block:"start"})};
 document.getElementById("next").onclick=()=>{pageNum=Math.min(pdf.numPages,pageNum+1);document.getElementById("pageInfo").textContent=pageNum+" of "+pdf.numPages;document.querySelectorAll(".page")[pageNum-1]?.scrollIntoView({behavior:"smooth",block:"start"})};
-document.getElementById("fs").onclick=async()=>{if(!document.fullscreenElement){await document.documentElement.requestFullscreen();document.getElementById("fs").textContent="EXIT FULL SCREEN"}else{await document.exitFullscreen()}};
-document.addEventListener("fullscreenchange",()=>document.getElementById("fs").textContent=document.fullscreenElement?"EXIT FULL SCREEN":"FULL SCREEN");
+document.getElementById("fs").onclick=async()=>{
+  if(!document.fullscreenElement){
+    await document.documentElement.requestFullscreen();
+    scale=-1;
+    document.getElementById("fs").textContent="EXIT FULL SCREEN";
+    requestAnimationFrame(()=>renderAll());
+  }else{
+    await document.exitFullscreen();
+  }
+};
+document.addEventListener("fullscreenchange",()=>{
+  const full=!!document.fullscreenElement;
+  document.getElementById("fs").textContent=full?"EXIT FULL SCREEN":"FULL SCREEN";
+  if(full){ scale=-1; requestAnimationFrame(()=>renderAll()); }
+});
 load();
 </script>
 </body>
