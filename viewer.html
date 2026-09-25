@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Swanson Design — Project Viewer</title>
+<style>
+:root{--bar:#242424;--line:#555;--gold:#c7a16a;--paper:#eee;--ink:#222}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:Arial,Helvetica,sans-serif;background:#333;overflow:hidden}
+body{display:flex;flex-direction:column}
+#top{height:48px;min-height:48px;background:var(--bar);color:#fff;display:flex;align-items:center;padding:0 12px;gap:18px;border-bottom:1px solid #444}
+.brand{font-weight:700;letter-spacing:2px;font-size:12px}.title{font-size:13px;color:#ddd;flex:1}
+button{background:transparent;color:#fff;border:1px solid #666;padding:8px 12px;font-size:11px;letter-spacing:.5px;cursor:pointer}
+button:hover{border-color:#aaa}
+#tools{height:44px;min-height:44px;background:#303030;color:#eee;display:flex;align-items:center;justify-content:center;gap:8px;border-bottom:1px solid #444}
+#tools button{padding:5px 10px}
+#pageInfo{min-width:90px;text-align:center;font-size:12px}
+#viewer{flex:1;overflow:auto;background:#3a3a3a;padding:18px 0 50px;width:100%;min-width:0}
+#pages{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;min-width:0}
+.page{background:#fff;box-shadow:0 2px 12px #1118;display:block;max-width:none;height:auto}
+:fullscreen #viewer{width:100vw}
+:fullscreen #pages{width:100vw}
+:fullscreen .page{max-width:none}
+#status{position:fixed;inset:92px 0 auto 0;text-align:center;color:#ddd;font-size:13px;pointer-events:none}
+#err{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#222;color:#fff;border:1px solid #666;padding:24px;max-width:650px;text-align:center;line-height:1.5}
+a{color:#d7b47c}
+html:fullscreen #top{height:48px}
+</style>
+</head>
+<body>
+<div id="top">
+  <div class="brand">SWANSON DESIGN</div>
+  <div class="title" id="title">Project</div>
+  <button id="back">BACK TO MATERIALS</button>
+  <button id="fs">FULL SCREEN</button>
+</div>
+<div id="tools">
+  <button id="fit">FIT HEIGHT</button>
+  <button id="minus">−</button>
+  <span id="zoom">100%</span>
+  <button id="plus">+</button>
+  <button id="prev">‹</button>
+  <span id="pageInfo">—</span>
+  <button id="next">›</button>
+</div>
+<div id="viewer"><div id="pages"></div></div>
+<div id="status">Loading project…</div>
+<div id="err"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+let PROJECTS = {};
+let p = null;
+const requestedId = new URLSearchParams(location.search).get("id");
+
+function toDirect(dropbox){
+  if(!dropbox) return "";
+  try{
+    const u = new URL(dropbox);
+    u.hostname = "dl.dropboxusercontent.com";
+    u.searchParams.delete("dl");
+    u.searchParams.set("raw","1");
+    return u.toString();
+  }catch(e){ return dropbox; }
+}
+
+function resolveProject(list){
+  return list.find(x => String(x.slug || x.id || "") === String(requestedId || "")) || null;
+}
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const title = document.getElementById("title");
+const pages = document.getElementById("pages");
+const viewer = document.getElementById("viewer");
+const status = document.getElementById("status");
+const err = document.getElementById("err");
+let pdf=null, scale=-2, pageNum=1, pageRendering=false;
+
+title.textContent = "Loading…";
+document.getElementById("back").onclick=()=>location.href="index.html";
+
+function showError(msg){
+  status.style.display="none"; err.style.display="block";
+  err.innerHTML=msg + '<br><br><a href="'+(p?.dropbox||"#")+'" target="_blank" rel="noopener">OPEN ORIGINAL DROPBOX PDF</a>';
+}
+function renderPage(n){
+  return pdf.getPage(n).then(page=>{
+    const base=page.getViewport({scale:1});
+    const rootWidth = document.fullscreenElement
+      ? document.fullscreenElement.clientWidth
+      : document.documentElement.clientWidth;
+    const rootHeight = document.fullscreenElement
+      ? document.fullscreenElement.clientHeight
+      : document.documentElement.clientHeight;
+    const availableWidth = Math.max(320, rootWidth - 36);
+    const availableHeight = Math.max(320, rootHeight - 116);
+    const fitHeightScale = availableHeight / base.height;
+    const fitWidthScale = availableWidth / base.width;
+    // scale=-2 means FIT HEIGHT; scale=-1 remains FIT WIDTH.
+    const s = scale===-2
+      ? Math.min(fitHeightScale, fitWidthScale)
+      : (scale<0 ? fitWidthScale : scale);
+    const vp=page.getViewport({scale:s});
+    const c=document.createElement("canvas");
+    c.className="page";
+    c.width=Math.ceil(vp.width*devicePixelRatio);
+    c.height=Math.ceil(vp.height*devicePixelRatio);
+    c.style.width=vp.width+"px"; c.style.height=vp.height+"px";
+    const ctx=c.getContext("2d");
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    return page.render({canvasContext:ctx,viewport:vp}).promise.then(()=>{
+      pages.appendChild(c);
+      return c;
+    });
+  });
+}
+async function load(){
+  try{
+    const response = await fetch("projects.json", {cache:"no-store"});
+    const list = await response.json();
+    p = resolveProject(list);
+    if(!p){showError("Project not found.");return}
+    p.direct = toDirect(p.dropbox);
+    title.textContent = p.title;
+    pdf=await pdfjsLib.getDocument({url:p.direct,withCredentials:false}).promise;
+    status.style.display="none";
+    document.getElementById("pageInfo").textContent="1 of "+pdf.numPages;
+    await renderAll();
+  }catch(e){
+    console.error(e);
+    showError("The project could not be loaded.");
+  }
+}
+async function renderAll(){
+  pages.innerHTML="";
+  for(let n=1;n<=pdf.numPages;n++) await renderPage(n);
+  updateInfo();
+}
+function updateInfo(){document.getElementById("zoom").textContent=(scale===-2?"FIT HEIGHT":(scale<0?"FIT WIDTH":Math.round(scale*100)+"%"));document.getElementById("pageInfo").textContent=pageNum+" of "+pdf.numPages}
+document.getElementById("fit").onclick=()=>{scale=-2;renderAll()};
+document.getElementById("plus").onclick=()=>{scale=scale<0?1.15:Math.min(3,scale+.15);renderAll()};
+document.getElementById("minus").onclick=()=>{scale=scale<0?.85:Math.max(.35,scale-.15);renderAll()};
+document.getElementById("prev").onclick=()=>{pageNum=Math.max(1,pageNum-1);document.getElementById("pageInfo").textContent=pageNum+" of "+pdf.numPages;document.querySelectorAll(".page")[pageNum-1]?.scrollIntoView({behavior:"smooth",block:"start"})};
+document.getElementById("next").onclick=()=>{pageNum=Math.min(pdf.numPages,pageNum+1);document.getElementById("pageInfo").textContent=pageNum+" of "+pdf.numPages;document.querySelectorAll(".page")[pageNum-1]?.scrollIntoView({behavior:"smooth",block:"start"})};
+async function forceFit(){
+  scale=-2;
+  if(!pdf) return;
+  await renderAll();
+}
+document.getElementById("fs").onclick=async()=>{
+  if(!document.fullscreenElement){
+    await document.documentElement.requestFullscreen();
+    document.getElementById("fs").textContent="EXIT FULL SCREEN";
+    // Fullscreen dimensions settle asynchronously in Chromium/Edge.
+    setTimeout(forceFit, 350);
+    setTimeout(forceFit, 900);
+  }else{
+    await document.exitFullscreen();
+  }
+};
+document.addEventListener("fullscreenchange",()=>{
+  const full=!!document.fullscreenElement;
+  document.getElementById("fs").textContent=full?"EXIT FULL SCREEN":"FULL SCREEN";
+  if(full){
+    scale=-2;
+    setTimeout(forceFit, 350);
+    setTimeout(forceFit, 900);
+  } else {
+    setTimeout(forceFit, 150);
+  }
+});
+window.addEventListener("resize",()=>{ if(scale<0 && pdf) setTimeout(forceFit,100); });
+load();
+</script>
+</body>
+</html>
