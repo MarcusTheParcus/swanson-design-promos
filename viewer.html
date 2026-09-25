@@ -3,69 +3,206 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Swanson Design — Project</title>
+<title>Swanson Design Viewer</title>
 <style>
-html,body{margin:0;width:100%;height:100%;background:#202020;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
-.bar{height:58px;width:100%;background:#262626;display:flex;align-items:center;gap:20px;padding:0 18px;box-sizing:border-box;position:relative;z-index:10}
-.logo{font-size:12px;letter-spacing:.2em;white-space:nowrap}
-.title{font-size:13px;color:#ddd;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.btn{border:1px solid #777;background:transparent;color:#fff;text-decoration:none;font-size:10px;letter-spacing:.14em;padding:10px 12px;cursor:pointer;white-space:nowrap;box-sizing:border-box}
-.btn:hover{background:#fff;color:#222}
-.viewer{width:100%;height:calc(100vh - 58px);position:relative;background:#333;overflow:hidden}
-.viewer iframe{width:100%;height:100%;border:0;background:#fff;display:block}
-body:fullscreen .viewer,body:-webkit-full-screen .viewer{height:calc(100vh - 58px)}
-.fallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:#222;text-align:center}
-.fallback p{color:#bbb;font-size:13px}
-@media (max-width:700px){.bar{gap:10px;padding:0 10px}.logo{font-size:10px}.title{font-size:11px}.btn{font-size:9px;padding:8px 9px}}
+:root{--bg:#2f3031;--bar:#202122;--line:#555657;--text:#f3f3f3;--accent:#c8a56a}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--text);overflow:hidden}
+#app{width:100%;height:100%;display:flex;flex-direction:column}
+.topbar{height:44px;min-height:44px;background:var(--bar);display:flex;align-items:center;padding:0 16px;gap:18px;border-bottom:1px solid #333}
+.brand{font-size:12px;letter-spacing:2px;font-weight:700;white-space:nowrap}
+.title{font-size:12px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+button{background:transparent;color:var(--text);border:1px solid #777;padding:8px 13px;font-size:10px;letter-spacing:1px;cursor:pointer}
+button:hover{background:#333}
+button.primary{border-color:#ddd}
+#viewer{position:relative;flex:1;overflow:auto;background:#303132}
+#pages{width:100%;display:flex;flex-direction:column;align-items:center;padding:20px 18px 60px;gap:18px}
+.page{background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.35);display:block}
+.page canvas{display:block;width:100%;height:auto}
+#loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;letter-spacing:1px;background:#303132;z-index:5}
+#loading.hidden{display:none}
+.controls{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:10;background:rgba(30,30,30,.94);border:1px solid #555;padding:7px 10px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.controls button{padding:6px 10px}
+.pagecount{font-size:11px;min-width:58px;text-align:center}
+#message{max-width:720px;text-align:center;line-height:1.5;padding:30px}
+@media(max-width:700px){.topbar{padding:0 10px;gap:10px}.brand{font-size:10px}.title{font-size:11px}.topbar button{padding:7px 8px;font-size:9px}#pages{padding:10px 8px 60px}}
+:fullscreen .topbar{height:48px;min-height:48px}
+:fullscreen #viewer{background:#272829}
 </style>
 </head>
 <body>
-<div class="bar">
-<div class="logo">SWANSON DESIGN</div>
-<div class="title" id="title">Loading…</div>
-<a class="btn" href="index.html">BACK TO MATERIALS</a>
-<button class="btn" id="fs" type="button">FULL SCREEN</button>
+<div id="app">
+  <div class="topbar">
+    <div class="brand">SWANSON DESIGN</div>
+    <div class="title" id="title">Project</div>
+    <button id="back">BACK TO MATERIALS</button>
+    <button id="fs" class="primary">FULL SCREEN</button>
+  </div>
+  <main id="viewer"><div id="pages"></div><div id="loading">LOADING PROJECT…</div></main>
+  <div class="controls">
+    <button id="prev">‹</button>
+    <div class="pagecount"><span id="current">1</span> / <span id="total">—</span></div>
+    <button id="next">›</button>
+    <button id="minus">−</button>
+    <button id="plus">+</button>
+    <button id="fit">FIT WIDTH</button>
+  </div>
 </div>
-<div class="viewer" id="viewer">
-<iframe id="pdf" allow="fullscreen" title="Project PDF"></iframe>
-<div class="fallback" id="fallback">
-<p>Your browser may not display the PDF inside this viewer.</p>
-<a class="btn" id="open" target="_blank" rel="noopener">OPEN PDF</a>
-</div>
-</div>
-<script>
-fetch("projects.json")
-.then(response=>{if(!response.ok)throw new Error("Unable to load projects.json");return response.json()})
-.then(projects=>{
-const id=new URLSearchParams(window.location.search).get("id");
-const project=projects.find(item=>item.slug===id)||projects[0];
-if(!project)throw new Error("Project not found");
-document.title="Swanson Design — "+project.title;
+<script type="module">
+import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
+
+const projects = {
+  "automotive-retail-design": {
+    title:"Automotive Retail Design",
+    pdf:"pdfs/Swanson Design - Automotive Retail Design.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/ynyxxkb2tzluw3u18ksly/Swanson-Design-Automotive-Retail-Design.pdf?rlkey=1yheimkk2y7fnpd6ryme0wte1&st=wvb05g1a&dl=0"
+  },
+  "design-consultant": {
+    title:"Design Consultant",
+    pdf:"pdfs/Swanson Design - Design Consultant.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/5673a2rjq989h7fjeq6e6/Swanson-Design-Design-Consultant.pdf?rlkey=jbyeauwwwgg3r6qk8xkbajk8e&st=7ublmrf4&dl=0"
+  },
+  "educational-support-facilities": {
+    title:"Educational Support Facilities",
+    pdf:"pdfs/Swanson Design - Educational Support Facilities.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/5ljgvzuryokhdqkinqhkk/Swanson-Design-Educational-Support-Facilities.pdf?rlkey=3e7tik4f7ihz7g4pep5q1ozbt&st=xe42cuo4&dl=0"
+  },
+  "metropol-mall-istanbul": {
+    title:"Metropol Mall Istanbul",
+    pdf:"pdfs/Swanson Design - Metropol Mall Istanbul.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/s9iyp77nsft4o8mbnsdun/Swanson-Design-Metropol-Mall-Istanbul.pdf?rlkey=2uiro2074p3176084pwr9gxpa&st=x9wrh2tw&dl=0"
+  },
+  "office-and-workplace-interiors": {
+    title:"Office and Workplace Interiors",
+    pdf:"pdfs/Swanson Design - Office and Workplace Interiors.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/3c4u9el44vv86ttena61v/Swanson-Design-Office-and-Workplace-Interiors.pdf?rlkey=cdaqedt7ho5u9u6x2h6yhy8mx&st=ycgl7dsf&dl=0"
+  },
+  "residential-design": {
+    title:"Residential Design",
+    pdf:"pdfs/Swanson Design - Residential Design.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/c9cnzyyet7k245prddl16/Swanson-Design-Residential-Design.pdf?rlkey=lbhwjv33qrp78wwfhc17ysg1i&st=tpt58y2t&dl=0"
+  },
+  "residential-small-projects": {
+    title:"Residential Small Projects",
+    pdf:"pdfs/Swanson Design - Residential Small Projects.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/ulbfm8ld87nou1i856lxn/Swanson-Design-Residential-Small-Projects.pdf?rlkey=0nzlbn2sbcu1q5dhmrsja2jdt&st=tir964q8&dl=0"
+  },
+  "restaurants-cafes-and-nightclubs": {
+    title:"Restaurants Cafes and Nightclubs",
+    pdf:"pdfs/Swanson Design - Restaurants Cafes and Nightclubs.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/42g3468dti8p4rcc4laty/Swanson-Design-Restaurants-Cafes-and-Nightclubs.pdf?rlkey=iprgad66t9r63ddc43gcsllib&st=lawu5avw&dl=0"
+  },
+  "retail-design-consultants": {
+    title:"Retail Design Consultants",
+    pdf:"pdfs/Swanson Design - Retail Design Consultants.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/s32asisu1c2r0y248p6oq/Swanson-Design-Retail-Design-Consultants.pdf?rlkey=qu61dee4k126ezwjx0qws4mz4&st=3oxvbr5o&dl=0"
+  },
+  "retail-design-in-maryland": {
+    title:"Retail Design in Maryland",
+    pdf:"pdfs/Swanson Design - Retail Design in Maryland.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/w5fwhk63x1jgwh3whf7pn/Swanson-Design-Retail-Design-in-Maryland.pdf?rlkey=9eqlif7dyn2y0ug0ta19wq1hv&st=yfbaa0eb&dl=0"
+  },
+  "retail-mall-planning-and-design": {
+    title:"Retail Mall Planning and Design",
+    pdf:"pdfs/Swanson Design - Retail Mall Planning and Design.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/wyuxhccidrk9arkvjtry2/Swanson-Design-Retail-Mall-Planning-and-Design.pdf?rlkey=nup9yr0txmkmfy93gzrfajkec&st=enfjhgis&dl=0"
+  },
+  "sports-wellness-and-fitness-facilities": {
+    title:"Sports Wellness and Fitness Facilities",
+    pdf:"pdfs/Swanson Design - Sports Wellness and Fitness Facilities.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/wne685r0idnxv7m7t7s3n/Swanson-Design-Sports-Wellness-and-Fitness-Facilities.pdf?rlkey=kknol2s0325zer3kjv610b0id&st=69nivjhr&dl=0"
+  },
+  "storefront-design-criteria": {
+    title:"Storefront Design Criteria",
+    pdf:"pdfs/Swanson Design - Storefront Design Criteria.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/h6r9spp807ffft36m5qnl/Swanson-Design-Storefront-Design-Criteria.pdf?rlkey=tikbpm8p6335m3jxilxpmxtgr&st=a0u98zgd&dl=0"
+  },
+  "wellness-spas-and-cosmetics-retail": {
+    title:"Wellness Spas and Cosmetics Retail",
+    pdf:"pdfs/Swanson Design - Wellness Spas and Cosmetics Retail.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/duqaooezqb2e36c1z3wud/Swanson-Design-Wellness-Spas-and-Cosmetics-Retail.pdf?rlkey=r2kbodqoaekk84yth6yg2y7u5&st=0nw6bwh3&dl=0"
+  },
+  "workplace-interiors": {
+    title:"Workplace Interiors",
+    pdf:"pdfs/Swanson Design - Workplace Interiors.pdf",
+    dropbox:"https://www.dropbox.com/scl/fi/w1suclvlxgi550zbfzzz2/Swanson-Design-Workplace-Interiors.pdf?rlkey=hpgomfxyqh6uttk1xmgm1nsz8&st=j1amnnfm&dl=0"
+  }
+};
+
+const id=new URLSearchParams(location.search).get("id")||"automotive-retail-design";
+const project=projects[id]||projects["automotive-retail-design"];
 document.getElementById("title").textContent=project.title;
-document.getElementById("open").href=project.dropbox;
-const pdfURL=new URL(project.dropbox);
-pdfURL.searchParams.set("raw","1");
-// Chrome/Edge's built-in PDF viewer does not consistently honor
-// #zoom=page-width in a cross-origin iframe. #view=FitH is the
-// PDF open parameter for fitting the page horizontally.
-pdfURL.hash="view=FitH";
-document.getElementById("pdf").src=pdfURL.toString();
-})
-.catch(error=>{
-console.error(error);
-document.getElementById("title").textContent="Project unavailable";
-document.getElementById("fallback").style.display="flex";
-});
-const fullscreenButton=document.getElementById("fs");
-fullscreenButton.addEventListener("click",async()=>{
+const pagesEl=document.getElementById("pages"), viewer=document.getElementById("viewer");
+const loading=document.getElementById("loading"), currentEl=document.getElementById("current"), totalEl=document.getElementById("total");
+let pdf=null, scale=1, pageEls=[], active=1, fitMode=true;
+
+function fitWidthScale(page){
+  const unscaled=page.getViewport({scale:1});
+  const available=viewer.clientWidth-56;
+  return Math.max(.5, available/unscaled.width);
+}
+async function renderPage(n, forceScale=null){
+  const page=await pdf.getPage(n);
+  const useScale=forceScale||scale;
+  const viewport=page.getViewport({scale:useScale});
+  let wrap=pageEls[n-1];
+  if(!wrap){wrap=document.createElement("div");wrap.className="page";wrap.dataset.page=n;pageEls[n-1]=wrap;pagesEl.appendChild(wrap)}
+  wrap.style.width=viewport.width+"px";
+  let canvas=wrap.querySelector("canvas");
+  if(!canvas){canvas=document.createElement("canvas");wrap.appendChild(canvas)}
+  const ratio=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=Math.floor(viewport.width*ratio);
+  canvas.height=Math.floor(viewport.height*ratio);
+  canvas.style.width=viewport.width+"px";
+  canvas.style.height=viewport.height+"px";
+  await page.render({canvasContext:canvas.getContext("2d"),viewport,transform:ratio!==1?[ratio,0,0,ratio,0,0]:null}).promise;
+}
+async function renderAll(newScale){
+  scale=newScale;
+  for(let i=1;i<=pdf.numPages;i++) await renderPage(i,scale);
+}
+function updateActive(){
+  const mid=viewer.scrollTop+viewer.clientHeight*.35;
+  let best=1,bestDist=Infinity;
+  for(const el of pageEls){if(!el)continue;const d=Math.abs((el.offsetTop+el.offsetHeight/2)-mid);if(d<bestDist){bestDist=d;best=+el.dataset.page}}
+  active=best;currentEl.textContent=active;
+}
+async function fit(){
+  const page=await pdf.getPage(1);
+  await renderAll(fitWidthScale(page));
+  viewer.scrollTop=0; fitMode=true;
+}
+async function zoom(factor){
+  fitMode=false;
+  const next=Math.max(.5,Math.min(3,scale*factor));
+  const anchor=active;
+  await renderAll(next);
+  document.querySelector(`[data-page="${anchor}"]`)?.scrollIntoView({block:"center"});
+}
+document.getElementById("prev").onclick=()=>{const n=Math.max(1,active-1);document.querySelector(`[data-page="${n}"]`)?.scrollIntoView({behavior:"smooth",block:"start"})};
+document.getElementById("next").onclick=()=>{const n=Math.min(pdf.numPages,active+1);document.querySelector(`[data-page="${n}"]`)?.scrollIntoView({behavior:"smooth",block:"start"})};
+document.getElementById("plus").onclick=()=>zoom(1.15);
+document.getElementById("minus").onclick=()=>zoom(.87);
+document.getElementById("fit").onclick=fit;
+document.getElementById("back").onclick=()=>location.href="index.html";
+document.getElementById("fs").onclick=async()=>{
+  if(!document.fullscreenElement) await document.documentElement.requestFullscreen();
+  else await document.exitFullscreen();
+};
+document.addEventListener("fullscreenchange",()=>document.getElementById("fs").textContent=document.fullscreenElement?"EXIT FULL SCREEN":"FULL SCREEN");
+viewer.addEventListener("scroll",updateActive);
+window.addEventListener("resize",()=>{if(pdf&&fitMode)fit()});
+
 try{
-if(!document.fullscreenElement){await document.documentElement.requestFullscreen();}
-else{await document.exitFullscreen();}
-}catch(error){console.error("Fullscreen request failed:",error)}
-});
-document.addEventListener("fullscreenchange",()=>{
-fullscreenButton.textContent=document.fullscreenElement?"EXIT FULL SCREEN":"FULL SCREEN";
-});
+  pdf=await pdfjsLib.getDocument(project.pdf).promise;
+  totalEl.textContent=pdf.numPages;
+  await fit();
+  loading.classList.add("hidden");
+}catch(err){
+  console.error(err);
+  loading.innerHTML='<div id="message"><strong>Unable to load this project.</strong><br><br>The project PDF is not available in the site files yet.<br><br><button onclick="location.href=project.dropbox">OPEN PDF IN DROPBOX</button></div>';
+}
 </script>
 </body>
 </html>
