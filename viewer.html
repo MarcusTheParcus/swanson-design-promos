@@ -1,1 +1,214 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Swanson Design — Project</title><style>html,body{margin:0;height:100%;background:#202020;color:#fff;font-family:Arial,sans-serif;overflow:hidden}.bar{height:58px;background:#262626;display:flex;align-items:center;gap:20px;padding:0 18px;box-sizing:border-box}.logo{font-size:12px;letter-spacing:.2em;white-space:nowrap}.title{font-size:13px;color:#ddd;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.btn{border:1px solid #777;background:transparent;color:#fff;text-decoration:none;font-size:10px;letter-spacing:.14em;padding:10px 12px;cursor:pointer}.btn:hover{background:#fff;color:#222}.viewer{height:calc(100% - 58px);position:relative;background:#333}.viewer iframe{width:100%;height:100%;border:0;background:#fff}.fallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:#222}.fallback p{color:#bbb;font-size:13px}.loading{padding:30px;color:#aaa}</style></head><body><div class="bar"><div class="logo">SWANSON DESIGN</div><div class="title" id="title">Loading…</div><a class="btn" href="index.html">BACK TO MATERIALS</a><button class="btn" id="fs">FULL SCREEN</button></div><div class="viewer" id="viewer"><iframe id="pdf" allow="fullscreen" title="Project PDF"></iframe><div class="fallback"><p>Your browser may not display the PDF inside this viewer.</p><a class="btn" id="open" target="_blank" rel="noopener">OPEN PDF</a></div></div><script>let projects=[];fetch('projects.json').then(r=>r.json()).then(ps=>{projects=ps;const id=new URLSearchParams(location.search).get('id');const p=projects.find(x=>x.slug===id)||projects[0];document.title='Swanson Design — '+p.title;document.getElementById('title').textContent=p.title;document.getElementById('open').href=p.dropbox;const u=new URL(p.dropbox);u.searchParams.set('raw','1');document.getElementById('pdf').src=u.toString()}).catch(()=>document.getElementById('title').textContent='Project unavailable');document.getElementById('fs').onclick=()=>{const el=document.getElementById('viewer');if(!document.fullscreenElement){el.requestFullscreen?.()}else{document.exitFullscreen?.()}};document.addEventListener('fullscreenchange',()=>document.getElementById('fs').textContent=document.fullscreenElement?'EXIT FULL SCREEN':'FULL SCREEN');</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Swanson Design — Project</title>
+
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:#202020;
+  color:#fff;
+  font-family:Arial,sans-serif;
+  overflow:hidden;
+}
+
+.bar{
+  height:58px;
+  background:#262626;
+  display:flex;
+  align-items:center;
+  gap:20px;
+  padding:0 18px;
+  box-sizing:border-box;
+}
+
+.logo{
+  font-size:12px;
+  letter-spacing:.2em;
+  white-space:nowrap;
+}
+
+.title{
+  font-size:13px;
+  color:#ddd;
+  flex:1;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.btn{
+  border:1px solid #777;
+  background:transparent;
+  color:#fff;
+  text-decoration:none;
+  font-size:10px;
+  letter-spacing:.14em;
+  padding:10px 12px;
+  cursor:pointer;
+}
+
+.btn:hover{
+  background:#fff;
+  color:#222;
+}
+
+.viewer{
+  height:calc(100% - 58px);
+  width:100%;
+  position:relative;
+  background:#333;
+  overflow:hidden;
+}
+
+.viewer:fullscreen{
+  width:100vw;
+  height:100vh;
+}
+
+.viewer iframe{
+  width:100%;
+  height:100%;
+  border:0;
+  background:#fff;
+  display:block;
+}
+
+.fallback{
+  position:absolute;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:16px;
+  background:#222;
+}
+
+.fallback p{
+  color:#bbb;
+  font-size:13px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="bar">
+  <div class="logo">SWANSON DESIGN</div>
+  <div class="title" id="title">Loading…</div>
+  <a class="btn" href="index.html">BACK TO MATERIALS</a>
+  <button class="btn" id="fs">FULL SCREEN</button>
+</div>
+
+<div class="viewer" id="viewer">
+
+  <iframe
+    id="pdf"
+    allow="fullscreen"
+    title="Project PDF">
+  </iframe>
+
+  <div class="fallback">
+    <p>Your browser may not display the PDF inside this viewer.</p>
+    <a class="btn"
+       id="open"
+       target="_blank"
+       rel="noopener">
+       OPEN PDF
+    </a>
+  </div>
+
+</div>
+
+<script>
+
+let projects = [];
+
+fetch('projects.json')
+  .then(response => response.json())
+  .then(data => {
+
+    projects = data;
+
+    const id =
+      new URLSearchParams(location.search).get('id');
+
+    const project =
+      projects.find(item => item.slug === id) || projects[0];
+
+    document.title =
+      'Swanson Design — ' + project.title;
+
+    document.getElementById('title').textContent =
+      project.title;
+
+    document.getElementById('open').href =
+      project.dropbox;
+
+    const pdfURL =
+      new URL(project.dropbox);
+
+    pdfURL.searchParams.set('raw','1');
+
+    pdfURL.hash = 'zoom=page-width';
+
+    document.getElementById('pdf').src =
+      pdfURL.toString();
+
+  })
+  .catch(() => {
+    document.getElementById('title').textContent =
+      'Project unavailable';
+  });
+
+
+document.getElementById('fs').onclick = async () => {
+
+  const viewer =
+    document.getElementById('viewer');
+
+  try {
+
+    if (!document.fullscreenElement) {
+
+      await viewer.requestFullscreen();
+
+    } else {
+
+      await document.exitFullscreen();
+
+    }
+
+  } catch (error) {
+
+    console.log('Fullscreen request:', error);
+
+  }
+
+};
+
+
+document.addEventListener(
+  'fullscreenchange',
+  () => {
+
+    const button =
+      document.getElementById('fs');
+
+    button.textContent =
+      document.fullscreenElement
+      ? 'EXIT FULL SCREEN'
+      : 'FULL SCREEN';
+
+  }
+);
+
+</script>
+
+</body>
+</html>
