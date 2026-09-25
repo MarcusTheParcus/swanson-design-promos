@@ -11,7 +11,6 @@ html,body{margin:0;width:100%;height:100%;background:#202020;color:#fff;font-fam
 .title{font-size:13px;color:#ddd;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn{border:1px solid #777;background:transparent;color:#fff;text-decoration:none;font-size:10px;letter-spacing:.14em;padding:10px 12px;cursor:pointer;white-space:nowrap;box-sizing:border-box}
 .btn:hover{background:#fff;color:#222}
-body:fullscreen,body:-webkit-full-screen{width:100vw;height:100vh}
 .viewer{width:100%;height:calc(100vh - 58px);position:relative;background:#333;overflow:hidden}
 .viewer iframe{width:100%;height:100%;border:0;background:#fff;display:block}
 body:fullscreen .viewer,body:-webkit-full-screen .viewer{height:calc(100vh - 58px)}
@@ -46,7 +45,10 @@ document.getElementById("title").textContent=project.title;
 document.getElementById("open").href=project.dropbox;
 const pdfURL=new URL(project.dropbox);
 pdfURL.searchParams.set("raw","1");
-pdfURL.hash="zoom=page-width";
+// Chrome/Edge's built-in PDF viewer does not consistently honor
+// #zoom=page-width in a cross-origin iframe. #view=FitH is the
+// PDF open parameter for fitting the page horizontally.
+pdfURL.hash="view=FitH";
 document.getElementById("pdf").src=pdfURL.toString();
 })
 .catch(error=>{
@@ -57,11 +59,8 @@ document.getElementById("fallback").style.display="flex";
 const fullscreenButton=document.getElementById("fs");
 fullscreenButton.addEventListener("click",async()=>{
 try{
-if(!document.fullscreenElement){
-await document.documentElement.requestFullscreen();
-}else{
-await document.exitFullscreen();
-}
+if(!document.fullscreenElement){await document.documentElement.requestFullscreen();}
+else{await document.exitFullscreen();}
 }catch(error){console.error("Fullscreen request failed:",error)}
 });
 document.addEventListener("fullscreenchange",()=>{
